@@ -72,23 +72,24 @@ export class TranslationTextReplacementsController {
     }
 
     /**
+     * @param {number} groupIndex
      * @param {number} index
      * @returns {Promise<boolean>}
      */
-    async deleteGroup(index) {
+    async deleteGroup(groupIndex, index) {
         const options = await this._settingsController.getOptions();
         const {groups} = options.translation.textReplacements;
-        if (groups.length === 0) { return false; }
+        if (groupIndex < 0 || groupIndex >= groups.length) { return false; }
 
-        const group0 = groups[0];
-        if (index < 0 || index >= group0.length) { return false; }
+        const group = groups[groupIndex];
+        if (index < 0 || index >= group.length) { return false; }
 
         /** @type {import('settings-modifications').Modification} */
         const target = (
-            (group0.length > 1) ?
+            (group.length > 1) ?
             {
                 action: 'splice',
-                path: 'translation.textReplacements.groups[0]',
+                path: `translation.textReplacements.groups[${groupIndex}]`,
                 start: index,
                 deleteCount: 1,
                 items: [],
@@ -96,8 +97,8 @@ export class TranslationTextReplacementsController {
             {
                 action: 'splice',
                 path: 'translation.textReplacements.groups',
-                start: 0,
-                deleteCount: group0.length,
+                start: groupIndex,
+                deleteCount: 1,
                 items: [],
             }
         );
@@ -245,7 +246,7 @@ class TranslationTextReplacementsEntry {
     _onMenuClose(e) {
         switch (e.detail.action) {
             case 'remove':
-                void this._parent.deleteGroup(this._index);
+                void this._parent.deleteGroup(this._groupIndex, this._index);
                 break;
             case 'showTest':
                 this._setTestVisible(true);
