@@ -72,23 +72,24 @@ export class TranslationTextReplacementsController {
     }
 
     /**
+     * @param {number} groupIndex
      * @param {number} index
      * @returns {Promise<boolean>}
      */
-    async deleteGroup(index) {
+    async deleteGroup(groupIndex, index) {
         const options = await this._settingsController.getOptions();
         const {groups} = options.translation.textReplacements;
-        if (groups.length === 0) { return false; }
+        if (groupIndex < 0 || groupIndex >= groups.length) { return false; }
 
-        const group0 = groups[0];
-        if (index < 0 || index >= group0.length) { return false; }
+        const group = groups[groupIndex];
+        if (index < 0 || index >= group.length) { return false; }
 
         /** @type {import('settings-modifications').Modification} */
         const target = (
-            (group0.length > 1) ?
+            (group.length > 1) ?
             {
                 action: 'splice',
-                path: 'translation.textReplacements.groups[0]',
+                path: `translation.textReplacements.groups[${groupIndex}]`,
                 start: index,
                 deleteCount: 1,
                 items: [],
@@ -96,8 +97,8 @@ export class TranslationTextReplacementsController {
             {
                 action: 'splice',
                 path: 'translation.textReplacements.groups',
-                start: 0,
-                deleteCount: group0.length,
+                start: groupIndex,
+                deleteCount: 1,
                 items: [],
             }
         );
@@ -119,12 +120,12 @@ export class TranslationTextReplacementsController {
         this._entries = [];
 
         const {groups} = options.translation.textReplacements;
-        if (groups.length > 0) {
-            const group0 = groups[0];
-            for (let i = 0, ii = group0.length; i < ii; ++i) {
+        for (let groupIndex = 0, groupCount = groups.length; groupIndex < groupCount; ++groupIndex) {
+            const group = groups[groupIndex];
+            for (let i = 0, ii = group.length; i < ii; ++i) {
                 const node = /** @type {HTMLElement} */ (this._settingsController.instantiateTemplate('translation-text-replacement-entry'));
                 /** @type {HTMLElement} */ (this._entryContainer).appendChild(node);
-                const entry = new TranslationTextReplacementsEntry(this, node, i);
+                const entry = new TranslationTextReplacementsEntry(this, node, groupIndex, i);
                 this._entries.push(entry);
                 entry.prepare();
             }
@@ -155,13 +156,16 @@ class TranslationTextReplacementsEntry {
     /**
      * @param {TranslationTextReplacementsController} parent
      * @param {HTMLElement} node
+     * @param {number} groupIndex
      * @param {number} index
      */
-    constructor(parent, node, index) {
+    constructor(parent, node, groupIndex, index) {
         /** @type {TranslationTextReplacementsController} */
         this._parent = parent;
         /** @type {HTMLElement} */
         this._node = node;
+        /** @type {number} */
+        this._groupIndex = groupIndex;
         /** @type {number} */
         this._index = index;
         /** @type {EventListenerCollection} */
@@ -199,7 +203,7 @@ class TranslationTextReplacementsEntry {
         this._testInput = testInput;
         this._testOutput = testOutput;
 
-        const pathBase = `translation.textReplacements.groups[0][${this._index}]`;
+        const pathBase = `translation.textReplacements.groups[${this._groupIndex}][${this._index}]`;
         patternInput.dataset.setting = `${pathBase}.pattern`;
         replacementInput.dataset.setting = `${pathBase}.replacement`;
         ignoreCaseToggle.dataset.setting = `${pathBase}.ignoreCase`;
@@ -242,7 +246,7 @@ class TranslationTextReplacementsEntry {
     _onMenuClose(e) {
         switch (e.detail.action) {
             case 'remove':
-                void this._parent.deleteGroup(this._index);
+                void this._parent.deleteGroup(this._groupIndex, this._index);
                 break;
             case 'showTest':
                 this._setTestVisible(true);
